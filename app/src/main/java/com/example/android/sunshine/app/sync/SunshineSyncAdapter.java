@@ -393,6 +393,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
             PutDataMapRequest dataMapRequest = PutDataMapRequest.create(SUNSHINE_PATH);
             dataMapRequest.getDataMap().putDouble(TEMPERATURE_HIGH_KEY, high);
             dataMapRequest.getDataMap().putDouble(TEMPERATURE_LOW_KEY, low);
+            dataMapRequest.getDataMap().putLong("millis", System.currentTimeMillis());
 
             Log.i(LOG_TAG, "High and low: " + high + ", " + low);
 
