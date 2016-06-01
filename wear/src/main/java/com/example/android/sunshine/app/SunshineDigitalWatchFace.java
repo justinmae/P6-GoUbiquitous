@@ -165,10 +165,10 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                     if (SUNSHINE_PATH.equals(path)) {
                         DataMapItem dataMapItem = DataMapItem.fromDataItem(dataEvent.getDataItem());
                         DataMap dataMap = dataMapItem.getDataMap();
-                        double highTemp = dataMap.getDouble(TEMPERATURE_HIGH_KEY);
-                        double lowTemp = dataMap.getDouble(TEMPERATURE_LOW_KEY);
+                        String highTemp = dataMap.getString(TEMPERATURE_HIGH_KEY);
+                        String lowTemp = dataMap.getString(TEMPERATURE_LOW_KEY);
                         Log.i(LOG_TAG, "dataMap: high & low: "
-                                + String.valueOf(highTemp) + " " + String.valueOf(lowTemp));
+                                + highTemp + lowTemp);
                     }
 
                 }

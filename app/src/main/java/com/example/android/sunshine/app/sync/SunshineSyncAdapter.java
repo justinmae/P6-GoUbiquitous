@@ -389,13 +389,15 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
         if (cursor != null && cursor.moveToFirst()) {
             double high = cursor.getDouble(INDEX_MAX_TEMP);
             double low = cursor.getDouble(INDEX_MIN_TEMP);
+            String formattedHigh = Utility.formatTemperature(context, high);
+            String formattedLow = Utility.formatTemperature(context, low);
 
             PutDataMapRequest dataMapRequest = PutDataMapRequest.create(SUNSHINE_PATH);
-            dataMapRequest.getDataMap().putDouble(TEMPERATURE_HIGH_KEY, high);
-            dataMapRequest.getDataMap().putDouble(TEMPERATURE_LOW_KEY, low);
+            dataMapRequest.getDataMap().putString(TEMPERATURE_HIGH_KEY, formattedHigh);
+            dataMapRequest.getDataMap().putString(TEMPERATURE_LOW_KEY, formattedLow);
             dataMapRequest.getDataMap().putLong("millis", System.currentTimeMillis());
 
-            Log.i(LOG_TAG, "High and low: " + high + ", " + low);
+            Log.i(LOG_TAG, "High and low: " + formattedHigh + ", " + formattedLow);
 
             PutDataRequest dataRequest = dataMapRequest.asPutDataRequest();
 
