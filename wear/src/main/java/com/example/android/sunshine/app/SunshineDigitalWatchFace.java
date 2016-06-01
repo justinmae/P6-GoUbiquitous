@@ -119,11 +119,16 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
         float mXOffset;
         float mYOffset;
 
+        float mTextSize;
+
         /**
          * Whether the display supports fewer bits for each color in ambient mode. When true, we
          * disable anti-aliasing in ambient mode.
          */
         boolean mLowBitAmbient;
+
+        String mHighTemp;
+        String mLowTemp;
 
         GoogleApiClient mGoogleApiClient;
 
@@ -165,10 +170,10 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                     if (SUNSHINE_PATH.equals(path)) {
                         DataMapItem dataMapItem = DataMapItem.fromDataItem(dataEvent.getDataItem());
                         DataMap dataMap = dataMapItem.getDataMap();
-                        String highTemp = dataMap.getString(TEMPERATURE_HIGH_KEY);
-                        String lowTemp = dataMap.getString(TEMPERATURE_LOW_KEY);
+                        mHighTemp = dataMap.getString(TEMPERATURE_HIGH_KEY);
+                        mLowTemp = dataMap.getString(TEMPERATURE_LOW_KEY);
                         Log.i(LOG_TAG, "dataMap: high & low: "
-                                + highTemp + lowTemp);
+                                + mHighTemp + mLowTemp);
                     }
 
                 }
@@ -254,10 +259,10 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
             boolean isRound = insets.isRound();
             mXOffset = resources.getDimension(isRound
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
-            float textSize = resources.getDimension(isRound
+            mTextSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
 
-            mTextPaint.setTextSize(textSize);
+            mTextPaint.setTextSize(mTextSize);
         }
 
         @Override
@@ -297,12 +302,23 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
+            float y = mYOffset;
+            float x = mXOffset;
             // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
             mTime.setToNow();
             String text = mAmbient
                     ? String.format("%d:%02d", mTime.hour, mTime.minute)
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
-            canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            canvas.drawText(text, x, y, mTextPaint);
+
+            if (mHighTemp != null && mLowTemp != null) {
+                // Draw Temperatures
+                y += (mTextSize * 2);
+                canvas.drawText(mHighTemp, x, y, mTextPaint);
+
+                x += mTextPaint.measureText(mHighTemp);
+                canvas.drawText(mLowTemp, x, y, mTextPaint);
+            }
         }
 
         /**
