@@ -41,6 +41,7 @@ import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
@@ -51,6 +52,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -100,6 +102,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
     private static final String SUNSHINE_PATH = "/sunshine";
     private static final String TEMPERATURE_HIGH_KEY = "temperature_high";
     private static final String TEMPERATURE_LOW_KEY = "temperature_low";
+    private static final String WEATHER_ART_KEY = "weather_art";
 
     private GoogleApiClient mGoogleApiClient;
 
@@ -392,9 +395,15 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
             String formattedHigh = Utility.formatTemperature(context, high);
             String formattedLow = Utility.formatTemperature(context, low);
 
+            int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+            int artResourceId = Utility.getArtResourceForWeatherCondition(weatherId);
+            Bitmap largeIcon = BitmapFactory.decodeResource(context.getResources(), artResourceId);
+            Asset weatherArtAsset = toAsset(largeIcon);
+
             PutDataMapRequest dataMapRequest = PutDataMapRequest.create(SUNSHINE_PATH);
             dataMapRequest.getDataMap().putString(TEMPERATURE_HIGH_KEY, formattedHigh);
             dataMapRequest.getDataMap().putString(TEMPERATURE_LOW_KEY, formattedLow);
+            dataMapRequest.getDataMap().putAsset(WEATHER_ART_KEY, weatherArtAsset);
             dataMapRequest.getDataMap().putLong("millis", System.currentTimeMillis());
 
             Log.i(LOG_TAG, "High and low: " + formattedHigh + ", " + formattedLow);
@@ -710,5 +719,27 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
+    }
+
+    /**
+     * Builds an {@link com.google.android.gms.wearable.Asset} from a bitmap. Typically, your image should not exceed
+     * 320x320 and if you want to have zoom and parallax effect in your app, limit the size of your
+     * image to 640x400. Resize your image before transferring to your wearable device.
+     */
+    private static Asset toAsset(Bitmap bitmap) {
+        ByteArrayOutputStream byteStream = null;
+        try {
+            byteStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
+            return Asset.createFromBytes(byteStream.toByteArray());
+        } finally {
+            if (null != byteStream) {
+                try {
+                    byteStream.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+        }
     }
 }
