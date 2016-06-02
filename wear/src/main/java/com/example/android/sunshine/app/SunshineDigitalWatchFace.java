@@ -113,6 +113,7 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
         Paint mTextPaint;
+        Paint mTempTextPaint;
         boolean mAmbient;
         Time mTime;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -126,6 +127,7 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
         float mYOffset;
 
         float mTextSize;
+        float mTempTextSize;
 
         /**
          * Whether the display supports fewer bits for each color in ambient mode. When true, we
@@ -136,6 +138,8 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
         String mHighTemp;
         String mLowTemp;
         Bitmap mWeatherArtBitmap;
+
+        Rect mBitmapRect;
 
         GoogleApiClient mGoogleApiClient;
 
@@ -157,7 +161,12 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
             mTextPaint = new Paint();
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
 
+            mTempTextPaint = new Paint();
+            mTempTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
+
             mTime = new Time();
+
+            mBitmapRect = new Rect();
 
             // connect to wearable API
             mGoogleApiClient = new GoogleApiClient.Builder(SunshineDigitalWatchFace.this)
@@ -271,8 +280,10 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
             mTextSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
-
+            mTempTextSize = resources.getDimension(isRound
+                    ? R.dimen.digital_temp_text_size_round : R.dimen.digital_temp_text_size);
             mTextPaint.setTextSize(mTextSize);
+            mTempTextPaint.setTextSize(mTempTextSize);
         }
 
         @Override
@@ -294,6 +305,7 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
                     mTextPaint.setAntiAlias(!inAmbientMode);
+                    mTempTextPaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -321,20 +333,26 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, x, y, mTextPaint);
 
+            x += bounds.width()/6;
             y += (mTextSize);
+
+            mBitmapRect.set((int)x,(int)y, (int)x + bounds.width()/3, (int)y + bounds.height()/3);
 
             // Draw weather art
             if (mWeatherArtBitmap != null && !isInAmbientMode()) {
-                canvas.drawBitmap(mWeatherArtBitmap, x, y, new Paint());
+                canvas.drawBitmap(mWeatherArtBitmap, null, mBitmapRect, null);
             }
 
-            // Draw Temperatures
-            if (mHighTemp != null && mLowTemp != null) {
-                x += mTextPaint.measureText(mHighTemp);
-                canvas.drawText(mHighTemp, x, y, mTextPaint);
+            y += (mTempTextSize);
 
-                x += mTextPaint.measureText(mHighTemp);
-                canvas.drawText(mLowTemp, x, y, mTextPaint);
+            // Draw Temperatures
+            if (mHighTemp != null && mLowTemp != null && !isInAmbientMode()) {
+                x += bounds.width()/3;
+                canvas.drawText(mHighTemp, x, y, mTempTextPaint);
+
+//                x += mTempTextPaint.measureText(mHighTemp);
+                y += (mTempTextSize);
+                canvas.drawText(mLowTemp, x, y, mTempTextPaint);
             }
         }
 
@@ -403,7 +421,7 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
             protected void onPostExecute(Bitmap bitmap) {
 
                 if (bitmap != null) {
-                    Log.d(LOG_TAG, "Setting background image on second page..");
+                    Log.d(LOG_TAG, "Setting weather image");
                     mWeatherArtBitmap = bitmap;
                     invalidate();
                 }
