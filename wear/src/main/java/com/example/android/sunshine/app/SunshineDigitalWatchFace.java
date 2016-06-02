@@ -21,11 +21,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -40,6 +43,7 @@ import android.view.WindowInsets;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.DataEvent;
 import com.google.android.gms.wearable.DataEventBuffer;
@@ -47,6 +51,7 @@ import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Wearable;
 
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -75,6 +80,7 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
     private static final String SUNSHINE_PATH = "/sunshine";
     private static final String TEMPERATURE_HIGH_KEY = "temperature_high";
     private static final String TEMPERATURE_LOW_KEY = "temperature_low";
+    private static final String WEATHER_ART_KEY = "weather_art";
 
     @Override
     public Engine onCreateEngine() {
@@ -129,6 +135,7 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
 
         String mHighTemp;
         String mLowTemp;
+        Bitmap mWeatherArtBitmap;
 
         GoogleApiClient mGoogleApiClient;
 
@@ -172,6 +179,9 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                         DataMap dataMap = dataMapItem.getDataMap();
                         mHighTemp = dataMap.getString(TEMPERATURE_HIGH_KEY);
                         mLowTemp = dataMap.getString(TEMPERATURE_LOW_KEY);
+                        Asset weatherArtAsset = dataMap.getAsset(WEATHER_ART_KEY);
+                        new LoadBitmapAsyncTask().execute(weatherArtAsset);
+
                         Log.i(LOG_TAG, "dataMap: high & low: "
                                 + mHighTemp + mLowTemp);
                     }
@@ -311,9 +321,16 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, x, y, mTextPaint);
 
+            y += (mTextSize);
+
+            // Draw weather art
+            if (mWeatherArtBitmap != null && !isInAmbientMode()) {
+                canvas.drawBitmap(mWeatherArtBitmap, x, y, new Paint());
+            }
+
+            // Draw Temperatures
             if (mHighTemp != null && mLowTemp != null) {
-                // Draw Temperatures
-                y += (mTextSize * 2);
+                x += mTextPaint.measureText(mHighTemp);
                 canvas.drawText(mHighTemp, x, y, mTextPaint);
 
                 x += mTextPaint.measureText(mHighTemp);
@@ -350,6 +367,46 @@ public class SunshineDigitalWatchFace extends CanvasWatchFaceService {
                 long delayMs = INTERACTIVE_UPDATE_RATE_MS
                         - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
+            }
+        }
+
+        /*
+ * Extracts {@link android.graphics.Bitmap} data from the
+ * {@link com.google.android.gms.wearable.Asset}
+ */
+        private class LoadBitmapAsyncTask extends AsyncTask<Asset, Void, Bitmap> {
+
+            @Override
+            protected Bitmap doInBackground(Asset... params) {
+                Log.d(LOG_TAG, "In doInBackground()");
+
+                if (params.length > 0) {
+
+                    Asset asset = params[0];
+
+                    InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
+                            mGoogleApiClient, asset).await().getInputStream();
+
+                    if (assetInputStream == null) {
+                        Log.w(LOG_TAG, "Requested an unknown Asset.");
+                        return null;
+                    }
+                    return BitmapFactory.decodeStream(assetInputStream);
+
+                } else {
+                    Log.e(LOG_TAG, "Asset must be non-null");
+                    return null;
+                }
+            }
+
+            @Override
+            protected void onPostExecute(Bitmap bitmap) {
+
+                if (bitmap != null) {
+                    Log.d(LOG_TAG, "Setting background image on second page..");
+                    mWeatherArtBitmap = bitmap;
+                    invalidate();
+                }
             }
         }
     }
